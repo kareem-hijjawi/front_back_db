@@ -29,26 +29,22 @@ jobs:
       # 4️⃣ Initialize EB
       - name: Initialize EB
         run: |
+          cd backend
           eb init todo-backend --platform "Docker" --region us-east-1 --verbose
           eb use todo-env
 
-      # 5️⃣ Zip backend folder for deployment
-      - name: Prepare source bundle
+      # 5️⃣ Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
         run: |
           cd backend
-          zip -r ../app.zip .
-          cd ..
+          eb deploy todo-env --staged
 
-      # 6️⃣ Deploy to Elastic Beanstalk
-      - name: Deploy to Elastic Beanstalk
-        run: eb deploy todo-env --staged --source app.zip
-
-      # 7️⃣ Wait until the container is healthy
+      # 6️⃣ Wait until the container is healthy
       - name: Wait for EB health
         run: |
+          URL="http://todo-env.eba-chkm7fym.us-east-1.elasticbeanstalk.com/tasks"
           MAX_RETRIES=12
           SLEEP_SECONDS=10
-          URL="http://todo-env.eba-chkm7fym.us-east-1.elasticbeanstalk.com/tasks"
           for i in $(seq 1 $MAX_RETRIES); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" $URL)
             echo "Attempt $i: HTTP status $STATUS"
