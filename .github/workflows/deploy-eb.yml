@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2️⃣ Configure AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -20,23 +22,41 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      # 3️⃣ Install EB CLI
       - name: Install EB CLI
         run: pip install --upgrade awsebcli
 
+      # 4️⃣ Initialize EB
       - name: Initialize EB
         run: |
           eb init todo-backend --platform "Docker" --region us-east-1 --verbose
           eb use todo-env
 
-      - name: Deploy to Elastic Beanstalk
-        run: eb deploy todo-env --staged
-
-      - name: Test backend
+      # 5️⃣ Zip backend folder for deployment
+      - name: Prepare source bundle
         run: |
-          sleep 10
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://todo-env.eba-chkm7fym.us-east-1.elasticbeanstalk.com/tasks)
-          echo "HTTP status: $STATUS_CODE"
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "Backend test failed"
-            exit 1
-          fi
+          cd backend
+          zip -r ../app.zip .
+          cd ..
+
+      # 6️⃣ Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
+        run: eb deploy todo-env --staged --source app.zip
+
+      # 7️⃣ Wait until the container is healthy
+      - name: Wait for EB health
+        run: |
+          MAX_RETRIES=12
+          SLEEP_SECONDS=10
+          URL="http://todo-env.eba-chkm7fym.us-east-1.elasticbeanstalk.com/tasks"
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" $URL)
+            echo "Attempt $i: HTTP status $STATUS"
+            if [ "$STATUS" -eq 200 ]; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            sleep $SLEEP_SECONDS
+          done
+          echo "Backend did not become healthy in time."
+          exit 1
