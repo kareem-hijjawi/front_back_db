@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the repository
+      
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Configure AWS credentials
+      
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -22,24 +22,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # 3️⃣ Install EB CLI
+      
       - name: Install EB CLI
         run: pip install --upgrade awsebcli
 
-      # 4️⃣ Initialize EB
+      
       - name: Initialize EB
         run: |
           cd backend
           eb init todo-backend --platform "Docker" --region us-east-1 --verbose
           eb use todo-env
 
-      # 5️⃣ Deploy to Elastic Beanstalk
+      
       - name: Deploy to Elastic Beanstalk
         run: |
           cd backend
           eb deploy todo-env --staged
 
-      # 6️⃣ Wait until the container is healthy
+      
       - name: Wait for EB health
         run: |
           URL="http://todo-env.eba-chkm7fym.us-east-1.elasticbeanstalk.com/tasks"
